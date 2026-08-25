@@ -49,6 +49,24 @@ if [ "$TIER" = "BIGGPU" ]; then
   pip install -q -r requirements-biggpu.txt || echo "[colab] WARNING: vllm/flash-attn install failed; vLLM cell in NB5 will skip"
 fi
 
+# ── 2b. Turing-or-older GPUs can't run xformers' GQA backward kernel ────
+# Colab preinstalls xformers; on T4 (capability 7.5) its memory-efficient
+# attention backward raises NotImplementedError for Qwen2.5's GQA shape
+# (flash-attn also needs capability >= 8.0, so there's no fallback but SDPA).
+# Uninstalling xformers makes Unsloth's attention dispatcher pick SDPA,
+# which works correctly on Turing GPUs (a bit slower, not a correctness issue).
+NEEDS_SDPA=0
+python - <<'PY' || NEEDS_SDPA=1
+import sys
+import torch
+sys.exit(1 if (torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] < 8) else 0)
+PY
+if [ "$NEEDS_SDPA" = "1" ]; then
+  echo "[colab] GPU compute capability < 8.0 (Turing or older) — xformers' GQA"
+  echo "[colab] backward kernel is unsupported here; uninstalling so SDPA is used."
+  pip uninstall -y -q xformers 2>/dev/null || true
+fi
+
 # ── 3. Convert Jupytext sources ─────────────────────────────────────────
 jupytext --to notebook --update notebooks/*.py 2>/dev/null || jupytext --to notebook notebooks/*.py
 

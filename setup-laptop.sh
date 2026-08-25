@@ -79,6 +79,23 @@ else:
     print("[laptop] BigGPU tier (7B model) viable. Set COMPUTE_TIER=BIGGPU in .env.")
 PY
 
+# ── 4b. Turing-or-older GPUs can't run xformers' GQA backward kernel ─────
+# xformers' memory-efficient attention backward has no kernel for Qwen2.5's
+# GQA shape below capability 8.0 (flash-attn also needs >= 8.0), so Unsloth
+# gets stuck with no working backend. Uninstalling xformers makes it fall
+# back to SDPA, which works correctly on Turing GPUs (a bit slower).
+NEEDS_SDPA=0
+python - <<'PY' || NEEDS_SDPA=1
+import sys
+import torch
+sys.exit(1 if (torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] < 8) else 0)
+PY
+if [ "$NEEDS_SDPA" = "1" ]; then
+  echo "[laptop] GPU compute capability < 8.0 (Turing or older) — xformers' GQA"
+  echo "[laptop] backward kernel is unsupported here; uninstalling so SDPA is used."
+  pip uninstall -y -q xformers 2>/dev/null || true
+fi
+
 # ── 5. Convert Jupytext sources to .ipynb ───────────────────────────────
 echo
 echo "[laptop] Converting Jupytext .py → .ipynb"
