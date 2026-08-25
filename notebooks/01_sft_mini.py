@@ -85,6 +85,13 @@ if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
     print("Set tokenizer.pad_token = eos_token")
 
+# Base (non-Instruct) Qwen2.5 ships with no chat_template — apply_chat_template
+# would raise ValueError without this. Saved via tokenizer.save_pretrained below
+# so NB2 (which loads from ADAPTER_OUT) inherits it automatically.
+from unsloth.chat_templates import get_chat_template
+
+tokenizer = get_chat_template(tokenizer, chat_template="qwen-2.5")
+
 # %%
 model = FastLanguageModel.get_peft_model(
     model,
