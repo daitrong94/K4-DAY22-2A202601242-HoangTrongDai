@@ -212,7 +212,10 @@ def generate_with_adapter(adapter_path, prompts, max_new_tokens=256):
                                             add_generation_prompt=True).to("cuda")
         with torch.no_grad():
             out = model.generate(input_ids=inp, max_new_tokens=max_new_tokens,
-                                 do_sample=False, pad_token_id=tokenizer.eos_token_id)
+                                 do_sample=False, pad_token_id=tokenizer.eos_token_id,
+                                 # ChatML end-of-turn <|im_end|>, not the base
+                                 # checkpoint's default <|endoftext|> eos.
+                                 eos_token_id=tokenizer.eos_token_id)
         outputs.append(tokenizer.decode(out[0][inp.shape[1]:], skip_special_tokens=True).strip())
 
     del model, tokenizer

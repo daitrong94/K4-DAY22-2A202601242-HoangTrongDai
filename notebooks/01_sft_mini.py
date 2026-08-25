@@ -215,7 +215,13 @@ inputs = tokenizer.apply_chat_template(
     messages, return_tensors="pt", add_generation_prompt=True
 ).to("cuda")
 with torch.no_grad():
-    out = model.generate(input_ids=inputs, max_new_tokens=200, do_sample=False)
+    # eos_token_id=tokenizer.eos_token_id: base checkpoint's generation_config
+    # defaults to <|endoftext|>, not ChatML's <|im_end|> — without this override,
+    # generation runs past the turn end into degenerate filler tokens.
+    out = model.generate(
+        input_ids=inputs, max_new_tokens=200, do_sample=False,
+        pad_token_id=tokenizer.eos_token_id, eos_token_id=tokenizer.eos_token_id,
+    )
 generated = tokenizer.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
 print(f"PROMPT: {prompt}\n")
 print(f"SFT-mini response:\n{generated}")

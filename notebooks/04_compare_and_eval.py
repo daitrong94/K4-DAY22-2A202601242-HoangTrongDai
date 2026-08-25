@@ -101,6 +101,10 @@ def generate_with_adapter(adapter_path: Path, prompts: list[dict], max_new_token
                 do_sample=False,             # deterministic for fair comparison
                 temperature=1.0,
                 pad_token_id=tokenizer.eos_token_id,
+                # Base checkpoint's generation_config defaults eos to <|endoftext|>,
+                # not ChatML's <|im_end|> — without this, generation runs past the
+                # turn end and fills max_new_tokens with degenerate tokens.
+                eos_token_id=tokenizer.eos_token_id,
             )
         generated = tokenizer.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
         outputs.append(generated.strip())
